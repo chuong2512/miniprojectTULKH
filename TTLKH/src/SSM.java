@@ -30,6 +30,60 @@ public class SSM {
         }
     }
 
+    public int distance(VarIntLS[][][] X){
+        int[][] Y = new int[n][2 * n - 2];
+        int dis = 0;
+        for (int t = 0; t < 2 * n - 2; t++) {
+            if (t == 0) {
+                for (int i = 0; i < n; i++) {
+                    for (int j = 0; j < n; j++) {
+                        if (i != j) {
+                            if (X[i][j][t].getValue() == 1) {
+                                dis += 0;
+                                Y[i][t] = i;
+                            } else if (X[j][i][t].getValue() == 1) {
+                                dis += d[i][j];
+                                Y[i][t] = j;
+                            }
+                        }
+                    }
+                }
+            } else {
+                for (int i = 0; i < n; i++) {
+                    for (int j = 0; j < n; j++) {
+                        if (i != j) {
+                            if (X[i][j][t].getValue() == 1) {
+                                dis += d[Y[i][t - 1]][i];
+                                Y[i][t] = i;
+                            } else if (X[j][i][t].getValue() == 1) {
+                                dis += d[Y[i][t - 1]][j];
+                                Y[i][t] = j;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return dis;
+    }
+
+    public VarIntLS[][][] saveVar(VarIntLS[][][] X){
+        VarIntLS[][][] var = X;
+        return var;
+    }
+
+    public void printCal(VarIntLS[][][] X){
+        for(int t = 0; t < 2*n - 2; t++){
+            for(int i = 0; i < n; i++){
+                for(int j = 0; j < n; j++){
+                    if(X[i][j][t].getValue() == 1){
+                        System.out.println("Tuần " + (t + 1) + " :" + (i+ 1)+" - "+(j + 1));
+                    }
+                }
+            }
+        }
+    }
+
     LocalSearchManager mgr;// doi tuong quan ly
     VarIntLS[][][] X;// bien quyet dinh
     ConstraintSystem S;// he thong cac rang buoc
@@ -114,82 +168,48 @@ public class SSM {
         Random R = new Random();
         ArrayList<Move> cand = new ArrayList<Move>();
         int it = 0;
-
-        while(it <= 10000 && S.violations() > 6){
-            cand.clear(); int minDelta = Integer.MAX_VALUE;
-            for(int t = 0; t < 2*n - 2; t++){
-                for(int i1 = 0; i1 < n; i1++){
-                    for(int j1 = 0; j1 < n ; j1++){
-                        for(int i2 = 0; i2 < n; i2++) {
-                            for (int j2 = 0; j2 < n; j2++) {
-                                int delta = S.getSwapDelta(X[i1][j1][t], X[i2][j2][t]);
-                                if (delta < minDelta) {
-                                    cand.clear();
-                                    cand.add(new Move(i1, i2, j1, j2, t));
-                                    minDelta = delta;
-                                } else if (delta == minDelta)
-                                    cand.add(new Move(i1, i2, j1, j2, t));
+        int min = Integer.MAX_VALUE;
+        VarIntLS[][][] vars = new VarIntLS[n][n][2*n - 2];
+        for(int z = 0; z< 100; z++)
+        {
+            while (it <= 10000 && S.violations() > (2 * n - 2)) {
+                cand.clear();
+                int minDelta = Integer.MAX_VALUE;
+                for (int t = 0; t < 2 * n - 2; t++) {
+                    for (int i1 = 0; i1 < n; i1++) {
+                        for (int j1 = 0; j1 < n; j1++) {
+                            for (int i2 = 0; i2 < n; i2++) {
+                                for (int j2 = 0; j2 < n; j2++) {
+                                    int delta = S.getSwapDelta(X[i1][j1][t], X[i2][j2][t]);
+                                    if (delta < minDelta) {
+                                        cand.clear();
+                                        cand.add(new Move(i1, i2, j1, j2, t));
+                                        minDelta = delta;
+                                    } else if (delta == minDelta)
+                                        cand.add(new Move(i1, i2, j1, j2, t));
+                                }
                             }
                         }
                     }
                 }
+                int idx = R.nextInt(cand.size());
+                Move m = cand.get(idx);
+                int i1 = m.i1;int i2 = m.i2;int j1 = m.j1;int j2 = m.j2;int t = m.t;
+                X[i1][j1][t].swapValuePropagate(X[i2][j2][t]);
+                it++;
             }
-            int idx = R.nextInt(cand.size());
-            Move m = cand.get(idx);
-            int i1 = m.i1; int i2 = m.i2; int j1 = m.j1; int j2 = m.j2; int t = m.t;
-            X[i1][j1][t].swapValuePropagate(X[i2][j2][t]);
-            it++;
+
+            int dis = distance(X);
+
+            System.out.println("Time:"+ z+ " Total distance: " + dis);
+            if(dis <= min && S.violations() == 2*n - 2){
+                min = dis;
+                vars = saveVar(X);
+            }
+            stateModel();
         }
-
-
-        int[][] Y = new int[n][2*n - 2];
-        int dis = 0;
-        for(int t = 0; t < 2*n - 2; t++){
-            if(t == 0) {
-                for (int i = 0; i < n; i++) {
-                    for (int j = 0; j < n; j++) {
-                        if (i != j) {
-                            if(X[i][j][t].getValue() == 1) {
-                                dis += 0;
-                                Y[i][t] = i;
-                            }
-                            else if(X[j][i][t].getValue() == 1) {
-                                dis += d[i][j];
-                                Y[i][t] = j;
-                            }
-                        }
-                    }
-                }
-            }
-            else{
-                for (int i = 0; i < n; i++) {
-                    for (int j = 0; j < n; j++) {
-                        if (i != j) {
-                            if(X[i][j][t].getValue() == 1) {
-                                dis += d[Y[i][t -1]][i];
-                                Y[i][t] = i;
-                            }
-                            else if(X[j][i][t].getValue() == 1) {
-                                dis += d[Y[i][t -1]][j];
-                                Y[i][t] = j;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        System.out.println("Total distance: "+ dis);
-
-        for(int t = 0; t < 2*n - 2; t++){
-            for(int i = 0; i < n; i++){
-                for(int j = 0; j < n; j++){
-                    if(X[i][j][t].getValue() == 1){
-                        System.out.println("Tuần " + (t + 1) + " :" + (i+ 1)+" - "+(j + 1));
-                    }
-                }
-            }
-        }
+        System.out.println(min);
+        printCal(vars);
     }
 
     public static void main(String[] args) throws FileNotFoundException {
