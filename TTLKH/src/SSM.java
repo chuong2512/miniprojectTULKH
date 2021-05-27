@@ -5,12 +5,30 @@ import localsearch.model.ConstraintSystem;
 import localsearch.model.LocalSearchManager;
 import localsearch.model.VarIntLS;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.Scanner;
 
 public class SSM {
-    int n = 4;
+    int n ;
     int[][] d;
+
+    public SSM(String filename) throws FileNotFoundException {
+        FileInputStream fileInputStream = new FileInputStream(filename);
+        Scanner scanner = new Scanner(fileInputStream);
+
+        this.n = Integer.parseInt(scanner.nextLine());
+        this.d = new int[this.n][this.n];
+
+        for(int i = 0; i < n; i++ ){
+            String line = scanner.nextLine();
+            for(int j = 0; j< n; j++){
+                this.d[i][j] = Integer.parseInt(line.split(" ")[j]);
+            }
+        }
+    }
 
     LocalSearchManager mgr;// doi tuong quan ly
     VarIntLS[][][] X;// bien quyet dinh
@@ -56,7 +74,7 @@ public class SSM {
                 }
             }
         }
-        //trong 1 tuan chi co n/2 tran
+//        //trong 1 tuan chi co n/2 tran
         for(int t = 0; t < 2*n - 2; t++){
             VarIntLS[] doidau = new VarIntLS[n*n];
             for(int i = 0; i < n; i++){
@@ -66,38 +84,17 @@ public class SSM {
             }
             S.post(new IsEqual(new SumVar(doidau),n/2));
         }
-        // doi i chi co the thi dau 1 lan trong 1 tuan
+//         doi i chi co the thi dau 1 lan trong 1 tuan
         for(int i = 0; i < n ; i++){
             for(int t = 0; t < 2*n - 2; t++){
                 VarIntLS[] doidau = new VarIntLS[2*n];
-                for(int j = 0; j < n; j++) {
-                    doidau[j] = X[i][j][t];
-                    doidau[n+j] = X[j][i][t];
+                for(int j = 0; j < n; j++){
+                        doidau[j] = X[i][j][t];
+                        doidau[n+j] = X[j][i][t];
                 }
-            S.post(new IsEqual(new SumVar(doidau),1));
+                S.post(new IsEqual(new SumVar(doidau),1));
             }
         }
-        // doi i da n - 1 tran o san nha
-        for(int i = 0; i < n; i++){
-            VarIntLS[] doidau = new VarIntLS[n*(2*n-2)];
-            for(int j = 0; j < n; j++){
-                for(int t = 0; t< 2*n -2; t++){
-                    doidau[j*(2*n -2) + t] = X[i][j][t];
-                }
-                S.post(new IsEqual(new SumVar(doidau),n - 1));
-                }
-            }
-        // doi i da n - 1 tran tren san khach
-        for(int i = 0; i < n; i++){
-            VarIntLS[] doidau = new VarIntLS[n*(2*n-2)];
-            for(int j = 0; j < n; j++){
-                for(int t = 0; t< 2*n -2; t++){
-                    doidau[j*(2*n -2) + t] = X[j][i][t];
-                }
-                S.post(new IsEqual(new SumVar(doidau),n - 1));
-            }
-        }
-
         mgr.close();
     }
 
@@ -118,7 +115,7 @@ public class SSM {
         ArrayList<Move> cand = new ArrayList<Move>();
         int it = 0;
 
-        while(it <= 10000 && S.violations() > 0){
+        while(it <= 10000 && S.violations() > 6){
             cand.clear(); int minDelta = Integer.MAX_VALUE;
             for(int t = 0; t < 2*n - 2; t++){
                 for(int i1 = 0; i1 < n; i1++){
@@ -143,21 +140,60 @@ public class SSM {
             X[i1][j1][t].swapValuePropagate(X[i2][j2][t]);
             it++;
         }
-        System.out.println("violations :" +S.violations());
-        System.out.println("it : " + it);
-        for(int i = 0; i < n; i++){
-            for(int j = 0; j < n; j++){
-                for(int t = 0; t < 2*n - 2; t++){
+
+
+        int[][] Y = new int[n][2*n - 2];
+        int dis = 0;
+        for(int t = 0; t < 2*n - 2; t++){
+            if(t == 0) {
+                for (int i = 0; i < n; i++) {
+                    for (int j = 0; j < n; j++) {
+                        if (i != j) {
+                            if(X[i][j][t].getValue() == 1) {
+                                dis += 0;
+                                Y[i][t] = i;
+                            }
+                            else if(X[j][i][t].getValue() == 1) {
+                                dis += d[i][j];
+                                Y[i][t] = j;
+                            }
+                        }
+                    }
+                }
+            }
+            else{
+                for (int i = 0; i < n; i++) {
+                    for (int j = 0; j < n; j++) {
+                        if (i != j) {
+                            if(X[i][j][t].getValue() == 1) {
+                                dis += d[Y[i][t -1]][i];
+                                Y[i][t] = i;
+                            }
+                            else if(X[j][i][t].getValue() == 1) {
+                                dis += d[Y[i][t -1]][j];
+                                Y[i][t] = j;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        System.out.println("Total distance: "+ dis);
+
+        for(int t = 0; t < 2*n - 2; t++){
+            for(int i = 0; i < n; i++){
+                for(int j = 0; j < n; j++){
                     if(X[i][j][t].getValue() == 1){
-                        System.out.println(i + " " + j + " " + t);
+                        System.out.println("Tuần " + (t + 1) + " :" + (i+ 1)+" - "+(j + 1));
                     }
                 }
             }
         }
     }
 
-    public static void main(String[] args) {
-        SSM s = new SSM();
+    public static void main(String[] args) throws FileNotFoundException {
+        SSM s = new SSM("D:\\Code\\Tối ưu lập kế hoạch\\CPModel\\data_gen.txt");
         s.stateModel();
         s.search();
     }
